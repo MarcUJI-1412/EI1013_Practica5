@@ -203,19 +203,17 @@ public class EDLinkedHashSet<T> implements Set<T> {
             return;
         }
 
-        rehashThreshold *= 2;
-        Node orden_antiguo = header;
+        int nueva_capacidad = table.length * 2 + 1;
+        rehashThreshold = (int) (loadFactor * nueva_capacidad);
 
         // Reiniciamos los valores de la lista
-        table = new EDLinkedHashSet.Node[size * 2 + 1];
-        header = new Node();
-        header.next = header;
-        header.prev = header;
-        size = 0;
+        table = new EDLinkedHashSet.Node[nueva_capacidad];
 
-        Node recorre = orden_antiguo.next;
-        while (recorre != orden_antiguo) {
-            add(recorre.data);
+        Node recorre = header.next;
+        while (recorre != header) {
+            int index = hash(recorre.data);
+            recorre.hnext = table[index];
+            table[index] = recorre;
             recorre = recorre.next;
         }
     }
@@ -226,20 +224,27 @@ public class EDLinkedHashSet<T> implements Set<T> {
 
     @Override
     public boolean remove(Object item) {
-        Node nodo = findNode(item);
-
-        if (nodo == null) {
+        Node nodo_borrar = findNode(item);
+        if (nodo_borrar == null) {
             return false;
         }
 
+        size--;
+        unlink(nodo_borrar);
+
         int index = hash(item);
         Node nodo_cubeta = table[index];
-        while (nodo_cubeta.hnext != nodo && nodo_cubeta.hnext != null) {
+        if (nodo_cubeta == nodo_borrar) {
+            table[index] = nodo_borrar.hnext;
+            return true;
+        }
+
+        while (nodo_cubeta.hnext != nodo_borrar) {
             nodo_cubeta = nodo_cubeta.hnext;
         }
-        nodo_cubeta.hnext = nodo.hnext;
-        unlink(nodo);
-        size--;
+
+        nodo_cubeta.hnext = nodo_borrar.hnext;
+
         return true;
     }
 
@@ -249,8 +254,10 @@ public class EDLinkedHashSet<T> implements Set<T> {
 
     @Override
     public void clear() {
-        //TODO Ejercicio 8
-        throw new UnsupportedOperationException("Ejercicio 8: por implementar");
+        table = new EDLinkedHashSet.Node[table.length];
+        header.next = header;
+        header.prev = header;
+        size = 0;
     }
 
     // ------------------------------------------------------------------
@@ -263,15 +270,18 @@ public class EDLinkedHashSet<T> implements Set<T> {
 
         @Override
         public boolean hasNext() {
-            //TODO Ejercicio 9
-            throw new UnsupportedOperationException("Ejercicio 9: por implementar");
+            return current != header;
         }
 
         @Override
         public T next() {
-            //TODO Ejercicio 9
-            //Debe actualizar lastReturned para que lo use remove
-            throw new UnsupportedOperationException("Ejercicio 9: por implementar");
+            if (current == header) {
+                throw new NoSuchElementException();
+            }
+            T elem = current.data;
+            lastReturned = current;
+            current = current.next;
+            return elem;
         }
 
         @Override
@@ -294,8 +304,12 @@ public class EDLinkedHashSet<T> implements Set<T> {
 
     @Override
     public boolean containsAll(Collection<?> c) {
-        //TODO Ejercicio 10
-        throw new UnsupportedOperationException("Ejercicio 10: por implementar");
+        Iterator<?> it = c.iterator();
+        while (it.hasNext()) {
+            if (findNode(it.next()) == null )
+                return false;
+        }
+        return true;
     }
 
     // ------------------------------------------------------------------
@@ -303,7 +317,15 @@ public class EDLinkedHashSet<T> implements Set<T> {
     // ------------------------------------------------------------------
     @Override
     public boolean retainAll(Collection<?> c) {
-        //TODO Ejercicio 11
-        throw new UnsupportedOperationException("Ejercicio 11: por implementar");
+        boolean modificado = false;
+        Iterator<T> it = this.iterator();
+        while (it.hasNext()) {
+            T elem = it.next();
+            if (!(c.contains(elem))) {
+                remove(elem);
+                modificado = true;
+            }
+        }
+        return modificado;
     }
 }
